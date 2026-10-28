@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>InsightBoard – Executive Decision Intelligence</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f5f8;--card:#fff;--tx:#1c1d2b;--mu:#6b6d82;--bd:#e5e4ec;--ac:#d6262e;--gn:#1c9a5b;--am:#d98a0b;--rd:#d93a4a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15131a;--card:#1f1c27;--tx:#efedf5;--mu:#a5a3b8;--bd:#322f40;--ac:#ff6b72;--gn:#4cd08d;--am:#f2b04a;--rd:#ff6b78;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15131a;--card:#1f1c27;--tx:#efedf5;--mu:#a5a3b8;--bd:#322f40;--ac:#ff6b72;--gn:#4cd08d;--am:#f2b04a;--rd:#ff6b78;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}
+.mu{color:var(--mu)}.sub{margin:0 0 18px}
+.grid{display:grid;gap:14px}.k{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.two{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.kv{font-size:26px;font-weight:700}.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.hi{background:var(--rd)}.md{background:var(--am)}.lo{background:var(--gn)}.nz{background:var(--mu)}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd);font-size:14px;vertical-align:middle}th{color:var(--mu);font-weight:600}
+ol.al{padding-left:20px;margin:0}ol.al li{margin-bottom:8px}
+button,select,input[type=text]{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 12px;border-radius:8px}
+button{cursor:pointer}button:hover{border-color:var(--ac)}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.ag{background:color-mix(in srgb,var(--ac) 7%,var(--card));border-radius:10px;padding:12px;margin-top:10px;white-space:pre-wrap;min-height:70px}
+svg{display:block;width:100%;height:auto}code{background:var(--bd);padding:1px 6px;border-radius:4px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+</style></head><body><div class="w">
+<h1>🧠 InsightBoard</h1>
+<p class="mu sub">LLM-powered decision intelligence for a Bharti Airtel–style telecom: which of the many KPIs actually explain revenue and margin? (Synthetic illustrative data, 18 months to Sep 2026.)</p>
+<div class="c row"><b>Explain:</b>
+<select id="out"><option value="rev">Revenue growth (%)</option><option value="mar">EBITDA margin (pts)</option></select>
+<b>in month:</b><select id="mon"></select></div>
+<div class="grid k" id="kpis"></div>
+<div class="grid two" style="margin-top:14px">
+<div class="c"><h2 id="ct">Outcome</h2><svg id="ch" viewBox="0 0 520 180"></svg></div>
+<div class="c"><h2>Why did it change? (driver contributions)</h2><div id="wf"></div></div></div>
+<div class="c sc"><h2>KPI evidence – 14 indicators tested</h2><table id="tbl"></table></div>
+<div class="c"><h2>Executive brief (LLM)</h2>
+<div class="row"><button class="p" id="gen">Generate executive brief</button><span class="mu" style="font-size:13px">The LLM is given only the computed evidence below, nothing else.</span></div>
+<div class="ag" id="brief">Click to generate. Without LLM access the page shows a rule-based summary.</div>
+<div class="row" style="margin-top:12px"><input type="text" id="q" style="flex:1;min-width:200px" placeholder="Ask e.g. Why did revenue growth drop in May 2026?"><button id="ask">Ask</button></div>
+<div class="ag" id="ans" style="min-height:40px">Answers are grounded in the evidence table.</div></div>
+<div class="c"><h2>Algorithm used by the system</h2><ol class="al">
+<li><b>Ingest</b> 14 operational KPIs (network, customer, commercial, people) and two financial outcomes (revenue, EBITDA margin).</li>
+<li><b>Remove shared trends</b>: use month-over-month changes. Two series that merely both rise over time have a high raw correlation but a near-zero correlation in changes.</li>
+<li><b>Lag search</b>: correlate each KPI change with the outcome change at lag 0, 1 and 2 months and keep the best. Significance threshold <code>|r| &gt; 2/√n</code>.</li>
+<li><b>Classify</b> each KPI as <i>Driver</i> (significant), <i>Spurious trend</i> (high raw r, no change-r) or <i>Noise</i>.</li>
+<li><b>Joint model</b>: ridge regression on standardized, lag-aligned changes of the top drivers (λ = 1.5), to separate overlapping signals.</li>
+<li><b>Attribute a month</b>: contribution = β × (that month&rsquo;s standardized KPI change) × outcome spread; the rest is “unexplained”.</li>
+<li><b>Evidence pack → LLM</b>: top drivers with r, lag, contribution and KPI movement are sent as JSON; the LLM writes the headline, insights, actions and caveats using only that evidence.</li>
+<li><b>Guardrail</b>: correlation is not proof of causation; the brief must say so and recommend a validation step.</li></ol></div></div>
+<script>
+const $=i=>document.getElementById(i);
+const n=18,MO=["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+const mname=t=>MO[t%12]+" "+(2025+Math.floor((t+3)/12));
+const rn=(t,k)=>{const x=Math.sin(t*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)-.5};
+const inc=t=>t==12?1:t==13?.8:t==14?.3:0;
+const T=[...Array(n).keys()];
+const K=[
+{k:"Network uptime %",d:"Network",f:t=>99.4-1.3*inc(t)+.12*rn(t,1)},
+{k:"Avg data speed Mbps",d:"Network",f:t=>32+.3*t-7*inc(t)+1.5*rn(t,2)},
+{k:"Call drop rate %",d:"Network",f:t=>.8+1.1*inc(t)+.12*rn(t,3)},
+{k:"Complaint resolution h",d:"Customer",f:t=>20+9*inc(t)+2*rn(t,4)},
+{k:"Customer churn %",d:"Customer",f:t=>2.1+1.0*inc(t-1)+.12*rn(t,5)},
+{k:"NPS",d:"Customer",f:t=>44-10*inc(t)+2*rn(t,6)},
+{k:"Premium plan share %",d:"Commercial",f:t=>30+.4*t+(t>=15?5:0)+rn(t,8)},
+{k:"Digital recharge share %",d:"Commercial",f:t=>60+.5*t+1.5*rn(t,9)},
+{k:"Store footfall idx",d:"Commercial",f:t=>100-.4*t+4*rn(t,10)},
+{k:"Marketing spend ₹cr",d:"Commercial",f:t=>120+10*rn(t,11)},
+{k:"Support utilization %",d:"People",f:t=>78+6*inc(t)+2*rn(t,12)},
+{k:"Attrition %",d:"People",f:t=>1.6+.1*rn(t,13)},
+{k:"5G adoption %",d:"Network",f:t=>8+1.1*t+.5*rn(t,15)},
+{k:"Training hours",d:"People",f:t=>12+.1*t+rn(t,14)}];
+K.forEach(o=>o.s=T.map(o.f));
+const prem=K[6].s,churn=K[4].s,compl=K[3].s;
+const subs=T.map(t=>360+.7*t-5*inc(t-1)+.8*rn(t,16)),arpu=T.map(t=>140+1.3*prem[t]+3*rn(t,7));
+const rev=T.map(t=>subs[t]*arpu[t]/10*(1+.004*rn(t,17)));
+const mar=T.map(t=>51-2.2*(churn[t]-2.1)-.12*(compl[t]-20)+.4*rn(t,18));
+const df=a=>a.map((v,i)=>i?v-a[i-1]:0),pct=a=>a.map((v,i)=>i?(v-a[i-1])/a[i-1]*100:0);
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)**2)))||1};
+const cor=(a,b)=>{const ma=mean(a),mb=mean(b);let c=0,x=0,y=0;a.forEach((v,i)=>{c+=(v-ma)*(b[i]-mb);x+=(v-ma)**2;y+=(b[i]-mb)**2});return c/Math.sqrt(x*y||1)};
+function solve(A,b){const m=b.length;A=A.map((r,i)=>[...r,b[i]]);for(let i=0;i<m;i++){let p=i;for(let r=i+1;r<m;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;[A[i],A[p]]=[A[p],A[i]];for(let r=0;r<m;r++)if(r!=i){const f=A[r][i]/A[i][i];for(let c=i;c<=m;c++)A[r][c]-=f*A[i][c]}}return A.map((r,i)=>r[m]/r[i])}
+let M=null;
+function analyse(){
+ const mode=$("out").value,y=mode=="rev"?pct(rev):df(mar),lvl=mode=="rev"?rev:mar;
+ const R=K.map(o=>{const dx=df(o.s);let best=null;
+  for(let L=0;L<=2;L++){const xs=[],ys=[];for(let t=1+L;t<n;t++){xs.push(dx[t-L]);ys.push(y[t])}const r=cor(xs,ys);if(!best||Math.abs(r)>Math.abs(best.r))best={r,L,np:xs.length}}
+  const raw=cor(o.s,lvl),sig=Math.abs(best.r)>2/Math.sqrt(best.np);
+  return{...o,dx,...best,raw,sig,verdict:sig?"Driver":Math.abs(raw)>.6?"Spurious trend":"Noise"}});
+ const D=R.filter(o=>o.sig).sort((a,b)=>Math.abs(b.r)-Math.abs(a.r)).slice(0,6);
+ const ts=[];for(let t=3;t<n;t++)ts.push(t);
+ const yv=ts.map(t=>y[t]),my=mean(yv),sy=sd(yv);let beta=[];
+ const cols=D.map(o=>{const v=ts.map(t=>o.dx[t-o.L]);return{m:mean(v),s:sd(v)}});
+ if(D.length){const X=ts.map(t=>D.map((o,j)=>(o.dx[t-o.L]-cols[j].m)/cols[j].s)),Y=yv.map(v=>(v-my)/sy);
+  const p=D.length,A=[...Array(p)].map((_,i)=>[...Array(p)].map((_,j)=>X.reduce((s,r)=>s+r[i]*r[j],0)+(i==j?1.5:0)),),b=[...Array(p)].map((_,i)=>X.reduce((s,r,k)=>s+r[i]*Y[k],0));beta=solve(A,b)}
+ const pred=t=>my+D.reduce((s,o,j)=>s+beta[j]*(o.dx[t-o.L]-cols[j].m)/cols[j].s*sy,0);
+ const r2=1-ts.reduce((s,t)=>s+(y[t]-pred(t))**2,0)/ts.reduce((s,t)=>s+(y[t]-my)**2,0);
+ M={mode,y,lvl,R,D,beta,cols,my,sy,pred,r2};
+}
+const fm=(v,mode)=>(v>0?"+":"")+v.toFixed(2)+(mode=="rev"?"%":" pts");
+function contrib(t){return M.D.map((o,j)=>({o,c:M.beta[j]*(o.dx[t-o.L]-M.cols[j].m)/M.cols[j].s*M.sy}))}
+function init(){const o=$("mon");o.innerHTML=T.slice(3).map(t=>`<option value="${t}">${mname(t)}</option>`).join("");o.selectedIndex=-1}
+function render(){analyse();const sel=+$("mon").value||0,mode=M.mode;
+ let t=sel;if(!t){t=3;for(let i=3;i<n;i++)if(Math.abs(M.y[i]-M.my)>Math.abs(M.y[t]-M.my))t=i;$("mon").value=t}
+ const cs=contrib(t).sort((a,b)=>Math.abs(b.c)-Math.abs(a.c)),exp=cs.reduce((s,x)=>s+x.c,0),act=M.y[t]-M.my;
+ $("kpis").innerHTML=[["Actual change",fm(M.y[t],mode)],["vs average month",fm(act,mode)],["Explained by drivers",fm(exp,mode)],["Model fit (R²)",M.r2.toFixed(2)]].map(k=>`<div class="c" style="margin:0"><div class="mu">${k[0]}</div><div class="kv">${k[1]}</div></div>`).join("");
+ $("ct").textContent=(mode=="rev"?"Monthly revenue (₹ crore)":"EBITDA margin (%)")+" – "+mname(t)+" highlighted";
+ const lo=Math.min(...M.lvl)*.98,hi=Math.max(...M.lvl)*1.02,X=i=>25+i*28,Yy=v=>160-(v-lo)/(hi-lo)*140;
+ $("ch").innerHTML=`<path d="${M.lvl.map((v,i)=>(i?"L":"M")+X(i)+" "+Yy(v)).join("")}" fill="none" stroke="var(--ac)" stroke-width="2.5"/><circle cx="${X(t)}" cy="${Yy(M.lvl[t])}" r="6" fill="var(--ac)"/><text x="25" y="176" font-size="10" fill="var(--mu)">${mname(0)}</text><text x="470" y="176" font-size="10" fill="var(--mu)" text-anchor="end">${mname(n-1)}</text>`;
+ const mx=Math.max(.01,...cs.map(x=>Math.abs(x.c)));
+ $("wf").innerHTML=cs.length?cs.map(x=>{const w=Math.abs(x.c)/mx*50;return `<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${x.o.k} <span class="mu">(lag ${x.o.L})</span></span><b>${fm(x.c,mode)}</b></div><div style="position:relative;height:8px;background:var(--bd);border-radius:4px"><i style="position:absolute;height:8px;border-radius:4px;background:${x.c>=0?"var(--gn)":"var(--rd)"};left:${x.c>=0?50:50-w}%;width:${w}%"></i></div></div>`}).join("")+`<p class="mu" style="font-size:13px">Unexplained: ${fm(act-exp,mode)}</p>`:"No significant drivers found.";
+ $("tbl").innerHTML="<tr><th>KPI</th><th>Dept</th><th>Raw r (levels)</th><th>Change r</th><th>Best lag</th><th>Verdict</th></tr>"+[...M.R].sort((a,b)=>Math.abs(b.r)-Math.abs(a.r)).map(o=>`<tr><td>${o.k}</td><td>${o.d}</td><td>${o.raw.toFixed(2)}</td><td>${o.r.toFixed(2)}</td><td>${o.L} mo</td><td><span class="tag ${o.verdict=="Driver"?"lo":o.verdict=="Spurious trend"?"md":"nz"}">${o.verdict}</span></td></tr>`).join("");
+ M.t=t;M.cs=cs;M.act=act;M.exp=exp}
+function evidence(){const t=M.t,mode=M.mode;return JSON.stringify({company:"Airtel-style telecom (synthetic)",outcome:mode=="rev"?"monthly revenue growth %":"EBITDA margin change in pts",month:mname(t),actual_change:+M.y[t].toFixed(2),average_change:+M.my.toFixed(2),model_r2:+M.r2.toFixed(2),
+ drivers:M.cs.slice(0,4).map(x=>({kpi:x.o.k,dept:x.o.d,lag_months:x.o.L,correlation:+x.o.r.toFixed(2),contribution:+x.c.toFixed(2),kpi_change_used:+x.o.dx[t-x.o.L].toFixed(2),kpi_month_used:mname(t-x.o.L)})),
+ spurious_trend_kpis:M.R.filter(o=>o.verdict=="Spurious trend").map(o=>({kpi:o.k,raw_r:+o.raw.toFixed(2),change_r:+o.r.toFixed(2)})),noise_kpis:M.R.filter(o=>o.verdict=="Noise").map(o=>o.k)},null,1)}
+function localBrief(){const c=M.cs.slice(0,3),m=M.mode;if(!c.length)return "No KPI shows a statistically reliable link to this outcome.";
+ return `Headline: ${mname(M.t)} ${m=="rev"?"revenue growth":"EBITDA margin"} moved ${fm(M.y[M.t],m)}, ${fm(M.act,m)} versus a typical month.\n\nWhat explains it:\n`+c.map(x=>`• ${x.o.k} (${x.o.d}, ${x.o.L}-month lag): ${fm(x.c,m)}`).join("\n")+`\n\nAction: put leadership attention on ${c[0].o.d} KPIs, especially ${c[0].o.k}. Ignore ${M.R.filter(o=>o.verdict!="Driver").length} KPIs that show no reliable link.\nCaveat: correlation is not causation; validate with a controlled change or experiment.`}
+let smp=null;(async()=>{try{smp=await window.claude.use("sample")}catch(e){smp=null}})();
+async function llm(prompt,box,fallback){box.textContent="Thinking…";
+ if(!smp){box.textContent=fallback;return}
+ try{const r=await smp(prompt,{onText:({text})=>{box.textContent=text},cache:false});box.textContent=r.text}catch(e){box.textContent=fallback+"\n\n(LLM unavailable: showing rule-based summary.)"}}
+$("gen").onclick=()=>llm(`You are an executive decision-intelligence analyst. Use ONLY this evidence JSON; do not invent numbers.\n${evidence()}\nWrite plain text (no markdown symbols), max 170 words: 1) Headline sentence. 2) Three evidence-based insights citing KPI, lag and contribution. 3) Two recommended actions. 4) One caveat noting correlation is not causation and a validation step. Mention which KPIs can be ignored.`,$("brief"),localBrief());
+$("ask").onclick=()=>{const q=$("q").value.trim();if(!q)return;llm(`You answer executives' questions using ONLY this evidence JSON. If the evidence cannot answer, say so.\n${evidence()}\nQuestion: ${q}\nAnswer in under 120 words, plain text, cite numbers.`,$("ans"),"Select the month and outcome above, then see the driver contributions. (LLM not available here.)")};
+$("out").onchange=()=>{$("mon").value="";render()};$("mon").onchange=render;
+init();render();
+</script></body></html>
